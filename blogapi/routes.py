@@ -7,7 +7,9 @@ import datetime
 from flask import request, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from .models import User, Post
+from .models.user import User
+from .models.post import Post
+
 from .extensions import db
 import os
 
