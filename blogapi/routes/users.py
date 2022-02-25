@@ -1,13 +1,19 @@
-from flask import Blueprint
+import os
 import uuid
 import jwt
 import datetime
-from flask import request, jsonify, make_response
+
+from flask import request, Blueprint
+from flask_restful import reqparse
 from werkzeug.security import generate_password_hash, check_password_hash
-from blogapi.models.user import User
+
 from blogapi.extensions import db
-import os
+from blogapi.utils.database import get_all, get_one, add_instance, delete_instance, edit_instance, update_instance
+from blogapi.models.user import User
+
+
 from blogapi.utils.decorators import token_required
+
 
 user = Blueprint('user', __name__)
 
@@ -19,9 +25,9 @@ user = Blueprint('user', __name__)
 def get_all_users(current_user):
     
     if not current_user.admin:
-        return jsonify({'message' : 'Cannot perform that function!'})
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    users = User.query.all()
+    users = get_all(User)
 
     output = []
 
@@ -32,18 +38,20 @@ def get_all_users(current_user):
         dic_user['password'] = user.password
         dic_user['admin'] = user.admin
         output.append(dic_user)
-    return jsonify({'users':output})
+
+    return {'users' : output }, 200
 
 
 @user.route('/user/<public_id>', methods=['GET'])
 @token_required
-def get_one_user(current_user,public_id):
+def get_one_user(current_user, public_id):
+    
     if not current_user.admin:
-        return jsonify({'message' : 'Cannot perform that function!'})
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    user = User.query.filter_by(public_id=public_id).first()
+    user = get_one(model=User, public_id=public_id)
     if not user:
-        return jsonify({'message': 'No user found'})
+        return {'message' : 'User not found'}, 404
     
     dic_user = dict()
     dic_user['public_id'] = user.public_id
@@ -51,85 +59,92 @@ def get_one_user(current_user,public_id):
     dic_user['password'] = user.password
     dic_user['admin'] = user.admin
 
-    return jsonify({'user':dic_user})
+    return {'user' : dic_user }, 200
 
 @user.route('/user', methods=['POST'])
 @token_required
 def create_user(current_user):
     if not current_user.admin:
-        return jsonify({'message' : 'Cannot perform that function!'})
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
     data = request.get_json()
 
     hash_password = generate_password_hash(str(data['password']).encode("utf-8"), method='sha256')
-    user_new = User(public_id=str(uuid.uuid4()), name=data['name'], password=hash_password, admin=False)
-    db.session.add(user_new)
-    db.session.commit()
-
-    return jsonify({'message' : 'New user created!'})
+    
+    add_new = add_instance(model=User, public_id=str(uuid.uuid4()), name=data['name'], password=hash_password, admin=False)
+    if add_new:
+        return {'message' : 'User has been created'}, 201
+    else:
+        return {'message' : 'Error during adding the user'}, 400
 
 @user.route('/admin', methods=['POST'])
 def create_admin_user():
     
     hash_password = generate_password_hash(str('admin').encode("utf-8"), method='sha256')
-    user_new = User(public_id=str(uuid.uuid4()), name='admin', password=hash_password, admin=True)
-    db.session.add(user_new)
-    db.session.commit()
-
-    return jsonify({'message' : 'New admin user created!'})
+    add_new = add_instance(User, public_id=str(uuid.uuid4()), name='name', password=hash_password, admin=True)
+    if add_new:
+        return {'message' : 'Admin has been created'}, 201
+    else:
+        return {'message' : 'Error during adding the admin'}, 400
 
 
 @user.route('/user/<public_id>', methods=['PUT'])
 @token_required
 def promote_user(current_user, public_id):
     if not current_user.admin:
-        return jsonify({'message' : 'Cannot perform that function!'})
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    user = User.query.filter_by(public_id=public_id).first()
-    if not user:
-        return jsonify({'message': 'No user found'})
+    edit = update_instance(User, id=public_id ,public_id=public_id, admin=True)
+    if edit:
+        return {'message' : 'User has been promoted'}, 200
+    else:
+        return {'message' : 'Error during upgrading privileges of admin'}, 400
 
-    user.admin = True
-    db.session.commit()
+@user.route('/user/<public_id>', methods=['PATCH'])
+@token_required
+def edit_user(current_user, public_id):
+    if not current_user.admin:
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    return jsonify({'message' : 'User has been promoted'})
+    data = request.get_json()
+    
+    edit = edit_instance(User, id=public_id, public_id=public_id, **data)
+    if edit:
+        return {'message' : 'User has updated'}, 200
+    else:
+        return {'message' : 'Error during updating user'}, 400
 
 @user.route('/user/<public_id>', methods=['DELETE'])
 @token_required
 def delete_user(current_user, public_id):
 
     if not current_user.admin:
-        return jsonify({'message' : 'Cannot perform that function!'})
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    user = User.query.filter_by(public_id=public_id).first()
+    user = delete_instance(User, public_id=public_id)
 
-    if not user:
-        return jsonify({'message' : 'No user found!'})
-
-    db.session.delete(user)
-    db.session.commit()
-
-    return jsonify({'message' : 'The user has been deleted!'})
-
-
+    if user:
+        return {'message' : 'User has delete promoted'}, 200
+    else:
+        return {'message' : 'Error during delete user'}, 400
 
 @user.route('/login')
 def login():
     auth = request.authorization
 
     if not auth or not auth.username or not auth.password:
-        return make_response('Could not verify', 401, {'WWW-Authenticate' : 'Basic realm="Login required!"'})
+        return {'message' : 'Could not verify'}, 401
 
-    user = User.query.filter_by(name=auth.username).first()
+    user = get_one(name=auth.username)
 
     if not user:
-        return make_response('Could not verify', 401, {'WWW-Authenticate' : 'Basic realm="Login required!"'})
+        return {'message' : 'Could not verify'}, 401
 
     if check_password_hash(user.password, auth.password):
         token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)},os.environ.get("PASSWORD_KEY") , algorithm=os.environ.get("ALGORITHM"))
 
-        return jsonify({'token' : token})
+        return {'token' : 'token'}, 200
 
-    return make_response('Could not verify', 401, {'WWW-Authenticate' : 'Basic realm="Login required!"'})
+    return {'message' : 'Could not verify'}, 401
 
 

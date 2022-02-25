@@ -1,17 +1,20 @@
-from flask import Blueprint
 import datetime
+
+from flask import Blueprint
 from flask import request, jsonify
+
 from blogapi.models.post import Post
+from blogapi.models.user import User
 from blogapi.utils.decorators import token_required
 from blogapi.extensions import db
+from blogapi.utils.database import get_all, get_one, add_instance, delete_instance, edit_instance, update_instance
 
 post = Blueprint('post', __name__)
 
 @post.route('/post', methods=['GET'])
-@token_required
-def get_all_posts(current_user):
+def get_all_posts():
 
-    posts = Post.query.filter_by(author=current_user.id).all()
+    posts = get_all(Post)
     output = []
 
     for post in posts:
@@ -21,19 +24,19 @@ def get_all_posts(current_user):
         dic_post['priority'] = post.priority
         dic_post['status'] = post.status
         dic_post['is_public'] = post.is_public
-        dic_post['create_at'] = post.create_at
-        dic_post['author'] = post.author
+        dic_post['created_at'] = post.created_at
+        dic_post['author'] = post.user.name
+        dic_post['author_id'] = post.user.public_id
         output.append(dic_post)
 
-    return jsonify({'posts': output})
+    return {'posts': output}, 200
 
 @post.route('/post/<post_id>', methods=['GET'])
-@token_required
-def get_one_post(current_user, post_id):
-    post = Post.query.filter_by(id=post_id, user_id=current_user.id).first()
+def get_one_post(post_id):
+    post = get_one(Post, id=post_id)
 
     if not post:
-        return jsonify({'message': 'Not Found!'})
+        return {'message' : 'Post not found'}, 404
 
     dic_post = dict()
     dic_post['id'] = post.id
@@ -41,44 +44,56 @@ def get_one_post(current_user, post_id):
     dic_post['priority'] = post.priority
     dic_post['status'] = post.status
     dic_post['is_public'] = post.is_public
-    dic_post['create_at'] = post.create_at
-    dic_post['author'] = post.author
+    dic_post['created_at'] = post.created_at
+    dic_post['author'] = post.user.name
+    dic_post['author_id'] = post.user.public_id
 
-    return jsonify(dic_post)
+    return dic_post, 200
 
-@post.route('/post/<post_id>', methods=['POST'])
-def create_post(current_user, post_id):
+@post.route('/post', methods=['POST'])
+@token_required
+def create_post(current_user):
 
     data = request.get_json()
-
-    new_post = Post(title=data['title'],
-                    description = data['description'],
-                    priority = data['priority'],
-                    status = data['status'],
-                    time_publish = datetime.datetime.utcnow(),
-                    author =current_user.id)
-    db.session.add(new_post)
-    db.session.commit()
-    return jsonify({'message':'Post created'})
+    data['author'] = str(current_user.id)
+    new_post = add_instance(Post, **data)
+    if new_post:
+        return {'message' : 'Post has been created'}, 201
+    else:
+        return {'message' : 'Error during adding the user'}, 400
 
 @post.route('/post/<post_id>', methods=['PUT'])
+@token_required
+def public_post(current_user, post_id):
+    edit = update_instance(Post, id=post_id, id=post_id , is_public=True)
+    if edit:
+        return {'message' : 'Post has been set to public'}, 200
+    else:
+        return {'message' : 'Error during updating post'}, 400
+
+@post.route('/user/<post_id>', methods=['PATCH'])
+@token_required
 def update_post(current_user, post_id):
-    post = Post.query.filter_by(id=post_id, user_id=current_user.id).first()
+    if not current_user.admin:
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    if not post:
-        return jsonify({'message': 'Not Found!'})
-
-    post.is_public = True
-    db.session.commit()
-
-    return jsonify({'message':'Post is public now'})
+    data = request.get_json()
+    
+    edit = edit_instance(User, id=post_id, id=post_id, **data)
+    if edit:
+        return {'message' : 'Post has updated'}, 200
+    else:
+        return {'message' : 'Error during updating post'}, 400
 
 @post.route('/post/<post_id>', methods=['DELETE'])
+@token_required
 def delete_post(current_user, post_id):
-    post = Post.query.filter_by(id=post_id, user_id=current_user.id).first()
+    if not current_user.admin:
+        return {'message' : 'You dont have the privileges of admin'}, 401
 
-    if not post:
-        return jsonify({'message' : 'No Post found!'})
-    db.session.delete(post)
-    db.session.commit()
-    return jsonify({'message' : 'Post item deleted!'})
+    post = delete_instance(Post, id=post_id)
+    if post:
+        return {'message' : 'Post has delete'}, 200
+    else:
+        return {'message' : 'Error during deketing post'}, 400
+    
