@@ -54,14 +54,13 @@ def get_one_user(current_user,public_id):
     return jsonify({'user':dic_user})
 
 @user.route('/user', methods=['POST'])
-# @token_required
-def create_user():
-    # if not current_user.admin:
-    #     return jsonify({'message' : 'Cannot perform that function!'})
+@token_required
+def create_user(current_user):
+    if not current_user.admin:
+        return jsonify({'message' : 'Cannot perform that function!'})
 
     data = request.get_json()
 
-    print(data)
     hash_password = generate_password_hash(str(data['password']).encode("utf-8"), method='sha256')
     user_new = User(public_id=str(uuid.uuid4()), name=data['name'], password=hash_password, admin=False)
     db.session.add(user_new)
@@ -69,12 +68,22 @@ def create_user():
 
     return jsonify({'message' : 'New user created!'})
 
+@user.route('/admin', methods=['POST'])
+def create_admin_user():
+    
+    hash_password = generate_password_hash(str('admin').encode("utf-8"), method='sha256')
+    user_new = User(public_id=str(uuid.uuid4()), name='admin', password=hash_password, admin=True)
+    db.session.add(user_new)
+    db.session.commit()
+
+    return jsonify({'message' : 'New admin user created!'})
+
 
 @user.route('/user/<public_id>', methods=['PUT'])
-# @token_required
+@token_required
 def promote_user(current_user, public_id):
-    # if not current_user.admin:
-    #     return jsonify({'message' : 'Cannot perform that function!'})
+    if not current_user.admin:
+        return jsonify({'message' : 'Cannot perform that function!'})
 
     user = User.query.filter_by(public_id=public_id).first()
     if not user:
