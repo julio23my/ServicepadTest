@@ -135,15 +135,15 @@ def login():
     if not auth or not auth.username or not auth.password:
         return {'message' : 'Could not verify'}, 401
 
-    user = get_one(name=auth.username)
+    user = get_one(User, name=auth.username)
 
     if not user:
         return {'message' : 'Could not verify'}, 401
 
     if check_password_hash(user.password, auth.password):
-        token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)},os.environ.get("PASSWORD_KEY") , algorithm=os.environ.get("ALGORITHM"))
+        token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)},os.environ.get("SECRET_KEY") , algorithm=os.environ.get("ALGORITHM"))
 
-        return {'token' : 'token'}, 200
+        return {'token' : token}, 200
 
     return {'message' : 'Could not verify'}, 401
 

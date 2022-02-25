@@ -7,7 +7,7 @@ create a .env file inside this folder and add the following enviroments variable
     FLASK_APP=blogapi
     SQLALCHEMY_TRACK_MODIFICATIONS=False
     DATABASE_URL=sqlite:///database.db
-    PASSWORD_KEY=3998d574f40b4521b44b7589f49384b0
+    SECRET_KEY=3998d574f40b4521b44b7589f49384b0
     ALGORITHM=HS256
     DATABASE_URL=postgresql+psycopg2://test:password@localhost:5432/example
 

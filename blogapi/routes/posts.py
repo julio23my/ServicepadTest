@@ -65,7 +65,7 @@ def create_post(current_user):
 @post.route('/post/<post_id>', methods=['PUT'])
 @token_required
 def public_post(current_user, post_id):
-    edit = update_instance(Post, id=post_id, id=post_id , is_public=True)
+    edit = update_instance(Post, id=post_id, is_public=True)
     if edit:
         return {'message' : 'Post has been set to public'}, 200
     else:
@@ -79,7 +79,7 @@ def update_post(current_user, post_id):
 
     data = request.get_json()
     
-    edit = edit_instance(User, id=post_id, id=post_id, **data)
+    edit = edit_instance(User, id=post_id, **data)
     if edit:
         return {'message' : 'Post has updated'}, 200
     else:
