@@ -1,4 +1,4 @@
-from ..extensions import db
+from blogapi.extensions import db
 
 
 class Post(db.Model):

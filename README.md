@@ -12,19 +12,10 @@ create a .env file inside this folder and add the following enviroments variable
 
 This is a example please don't use the same key that was expose
 
-Now you just have to create the database
 
-first you just have to execute python in this folder and after that you need to execute the following sentences
-
-    import os
-    from blogapi import db
-    from blogapi.extensions import db
-    from blogapi import create_app
-    from blogapi.models import *
-    from blogapi.extensions import load
-    db.create_all(app=create_app())
-
-
-After you just need to execute the following command in this folder
+After you just need to execute this following commands in this folder
     
+    flask db init
+    flask db migrate
+    flask db upgrade
     flask run

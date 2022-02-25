@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from .extensions import db
+from blogapi.extensions import db, migrate
 from blogapi.routes.users import user
 from blogapi.routes.posts import post
 
@@ -11,6 +11,8 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.environ.get("SQLALCHEMY_TRACK_MODIFICATIONS")
     
     db.init_app(app)
+    migrate.init_app(app, db)
+
     app.register_blueprint(user)
     app.register_blueprint(post)
     return app

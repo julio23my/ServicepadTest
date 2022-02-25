@@ -1,6 +1,4 @@
 from flask import Blueprint
-from lib2to3.pgen2 import token
-
 import datetime
 from flask import request, jsonify
 from blogapi.models.post import Post
