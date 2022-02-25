@@ -13,6 +13,9 @@ create a .env file inside this folder and add the following enviroments variable
 
 This is a example please don't use the same key that was expose
 
+    
+    docker-compose up
+
 
 After you just need to execute this following commands in this folder
     
