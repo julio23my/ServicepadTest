@@ -45,7 +45,7 @@ def get_one_user(current_user, public_id):
     user = get_one(model=User, public_id=public_id)
     if not user:
         return jsonify({'message' : 'User not found'}), 404
-    serializer = UserSchema(many=True)
+    serializer = UserSchema(many=False)
 
     output = serializer.dump(user)
 
